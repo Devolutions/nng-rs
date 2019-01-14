@@ -1,10 +1,12 @@
-use std::ffi::CString;
+use std::ffi::{CString, c_void};
+use std::os::raw::c_int;
 use std::ptr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use nng_sys::protocol::*;
 use crate::error::{ErrorKind, Result, SendResult};
 use crate::message::Message;
 use crate::aio::Aio;
+use crate::pipe::{PipeEvent, PipeNotifyFn};
 use crate::protocol::Protocol;
 
 /// A nanomsg-next-generation socket.
@@ -53,7 +55,7 @@ impl Socket
 			}
 		};
 
-		rv2res!(rv, Socket { inner: Arc::new(Inner { handle: socket }), nonblocking: false })
+		rv2res!(rv, Socket { inner: Arc::new(Inner { handle: socket, pipe_notify: Mutex::new(None) }), nonblocking: false })
 	}
 
 	/// Initiates a remote connection to a listener.
@@ -231,6 +233,52 @@ impl Socket
 	{
 		self.inner.handle
 	}
+	
+	/// Register a pipe notification callback.
+	/// 
+	/// The callback will be notified on socket connection and disconnect events.
+    pub fn pipe_notify(&mut self, pipe_notify: Box<PipeNotifyFn>) -> Result<()> {
+        let events = [nng_sys::NNG_PIPE_EV_ADD_PRE, nng_sys::NNG_PIPE_EV_ADD_POST, nng_sys::NNG_PIPE_EV_REM_POST];
+		
+		self.set_pipe_notify_fn(Some(pipe_notify));
+
+		// We register a proxy function, it retrieves the user-provided callback from the Socket object.
+		// We need to register the callback for each of the event types.
+		for event in events.iter() {
+			let rv = unsafe {
+				nng_sys::nng_pipe_notify(
+					self.inner.handle,
+					*event,
+					Some(Socket::pipe_notify_proxy),
+					self as *mut _ as *mut c_void,
+				)
+			};
+
+			if rv != 0 {
+				// nng_pipe_notify only returns an error if the socket is not an open socket. In this
+				// case we clear the user-provided callback from Socket and return the error.
+				self.set_pipe_notify_fn(None);
+				return rv2res!(rv);
+			}
+		}
+
+        Ok(())
+    }
+
+    fn set_pipe_notify_fn(&mut self, pipe_notify: Option<Box<PipeNotifyFn>>) {
+        let mut guard = self.inner.pipe_notify.lock().unwrap();
+        *guard = pipe_notify;
+    }
+
+    extern "C" fn pipe_notify_proxy(_pipe: nng_sys::nng_pipe, event: c_int, arg: *mut c_void) {
+        let socket = unsafe { &*(arg as *const Socket) };
+
+        let mut guard = socket.inner.pipe_notify.lock().unwrap();
+
+        if let Some(ref mut notify_callback) = *guard {
+            notify_callback(PipeEvent::from_code(event))
+        }
+    }
 }
 
 expose_options!{
@@ -275,11 +323,18 @@ expose_options!{
 ///
 /// This allows us to have mutliple Rust socket types that won't clone the C
 /// socket type before Rust is done with it.
-#[derive(Debug)]
 struct Inner
 {
 	/// Handle to the underlying nng socket.
 	handle: nng_sys::nng_socket,
+	/// Pipe notify callback.
+	pipe_notify: Mutex<Option<Box<PipeNotifyFn>>>,
+}
+
+impl std::fmt::Debug for Inner {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Inner {{ handle: {:?} }}", self.handle)
+    }
 }
 
 impl Drop for Inner

@@ -167,15 +167,9 @@ extern "C"
 	pub fn nng_getopt_ptr(s: nng_socket, opt: *const c_char, ptr: *mut *mut c_void) -> c_int;
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub enum nng_pipe_ev
-{
-	NNG_PIPE_EV_ADD_PRE,
-	NNG_PIPE_EV_ADD_POST,
-	NNG_PIPE_EV_REM_POST,
-	NNG_PIPE_EV_NUM,
-}
+pub const NNG_PIPE_EV_ADD_PRE: c_int = 0;
+pub const NNG_PIPE_EV_ADD_POST: c_int = 1;
+pub const NNG_PIPE_EV_REM_POST: c_int = 2;
 
 pub type nng_pipe_cb = Option<extern "C" fn(nng_pipe, c_int, *mut c_void)>;
 

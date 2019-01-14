@@ -9,7 +9,7 @@ extern crate byteorder;
 
 use std::{env, mem, process};
 use std::time::SystemTime;
-use nng::{Socket, Protocol, Message};
+use nng::{Socket, PipeEvent, Protocol, Message};
 use byteorder::{ByteOrder, LittleEndian};
 
 /// Message representing a date request
@@ -56,6 +56,12 @@ fn client(url: &str) -> Result<(), nng::Error>
 fn server(url: &str) -> Result<(), nng::Error>
 {
 	let mut s = Socket::new(Protocol::Rep0)?;
+    
+    let callback = |event: PipeEvent| {
+        println!("PipeEvent: {:?}", event);
+    };
+    
+    s.pipe_notify(Box::new(callback))?;
 	s.listen(url)?;
 
 	loop {
