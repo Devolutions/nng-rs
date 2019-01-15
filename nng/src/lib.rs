@@ -16,7 +16,7 @@ mod socket;
 pub use socket::Socket;
 
 mod pipe;
-pub use pipe::PipeEvent;
+pub use pipe::{PipeEvent, PipeNotifyFn};
 
 mod protocol;
 pub use protocol::Protocol;
