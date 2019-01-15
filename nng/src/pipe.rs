@@ -1,6 +1,6 @@
 use std::os::raw::c_int;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PipeEvent {
     AddPre,
     AddPost,
@@ -8,7 +8,7 @@ pub enum PipeEvent {
     Unknown(i32),
 }
 
-pub type PipeNotifyFn = FnMut(PipeEvent) + 'static;
+pub type PipeNotifyFn = FnMut(PipeEvent) + Send + 'static;
 
 impl PipeEvent {
     pub(crate) fn from_code(event: c_int) -> PipeEvent {
