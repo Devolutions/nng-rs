@@ -16,8 +16,10 @@ license = "MIT"
 [features]
 default = ["build-nng"]
 build-nng = []
+conan-build = []
 
 [dependencies]
 
 [build-dependencies]
 cmake = "0.1"
+
