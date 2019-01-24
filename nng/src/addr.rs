@@ -68,9 +68,54 @@ impl SocketAddrZt
 
 /// Creates a `String` from a slice that _probably_ contains UTF-8 and
 /// _probably_ is null terminated.
+#[cfg(any(all(target_os = "linux", any(target_arch = "aarch64",
+                                       target_arch = "arm",
+                                       target_arch = "powerpc",
+                                       target_arch = "powerpc64",
+                                       target_arch = "s390x")),
+          all(target_os = "android", any(target_arch = "aarch64",
+                                         target_arch = "arm")),
+          all(target_os = "l4re", target_arch = "x86_64"),
+	      all(target_os = "netbsd", any(target_arch = "aarch64",
+                                        target_arch = "arm",
+                                        target_arch = "powerpc")),
+          all(target_os = "openbsd", target_arch = "aarch64"),
+          all(target_os = "fuchsia", target_arch = "aarch64")))]
+fn buf_to_string(buf: &[u8]) -> String
+{
+	// Unfortunately, the Rust standard library doesn't have a `from_ptr_len`
+	// style function that would allow me to pass in the whole buffer. Instead,
+	// we need to determine if there is a null byte and only pass in the slice
+	// up to that point.
+	//
+	// Another layer of unfortunate is that there is no owned version of
+	// `String::from_utf8_lossy`, so we can either allocate twice or we can do
+	// a little playing with fire. As this function is already getting called
+	// from unsafe code, I don't think it is a major issue to also make this
+	// unsafe.
+	let len = buf.len();
+	let null_byte = buf.iter().position(|&b| b == 0).unwrap_or(len);
+	String::from_utf8_lossy(&buf[0..null_byte]).into_owned()
+}
+
+/// Creates a `String` from a slice that _probably_ contains UTF-8 and
+/// _probably_ is null terminated.
 ///
 /// The function is unsafe because it reinterprets the `i8` buffer as a `u8`
 /// buffer via a call to `slice::from_raw_parts`.
+#[cfg(not(any(all(target_os = "linux", any(target_arch = "aarch64",
+                                           target_arch = "arm",
+                                           target_arch = "powerpc",
+                                           target_arch = "powerpc64",
+                                           target_arch = "s390x")),
+              all(target_os = "android", any(target_arch = "aarch64",
+                                             target_arch = "arm")),
+              all(target_os = "l4re", target_arch = "x86_64"),
+              all(target_os = "netbsd", any(target_arch = "aarch64",
+                                            target_arch = "arm",
+                                            target_arch = "powerpc")),
+              all(target_os = "openbsd", target_arch = "aarch64"),
+              all(target_os = "fuchsia", target_arch = "aarch64"))))]
 unsafe fn buf_to_string(buf: &[i8]) -> String
 {
 	// Unfortunately, the Rust standard library doesn't have a `from_ptr_len`
