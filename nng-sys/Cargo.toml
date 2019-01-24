@@ -21,8 +21,10 @@ gitlab = { repository = "neachdainn/nng-rs", branch = "master" }
 [features]
 default = ["build-nng"]
 build-nng = []
+conan-build = []
 
 [dependencies]
 
 [build-dependencies]
 cmake = "0.1"
+
