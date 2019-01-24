@@ -1,0 +1,7 @@
+[requires]
+cargo-generator/0.1.0@devolutions/stable
+nng/1.0.1@devolutions/stable
+mbedtls/2.4.1@devolutions/stable
+
+[generators]
+cargo
