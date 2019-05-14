@@ -21,7 +21,7 @@ default = ["build-nng"]
 build-nng = ["nng-sys/build-nng"]
 
 [dependencies]
-nng-sys = { git = "https://github.com/Devolutions/nng-sys/", branch = "wayk-new" }
+nng-sys = { git = "https://github.com/Devolutions/nng-sys/", branch = "wayk" }
 log = "0.4"
 
 [target.'cfg(windows)'.dependencies]
